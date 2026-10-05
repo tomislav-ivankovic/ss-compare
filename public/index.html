@@ -1,0 +1,1865 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>SS Compare</title>
+
+  <!--
+    OrbitControls imports "three" as a bare module specifier.
+    The import map tells the browser where that module lives.
+  -->
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js",
+      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/"
+    }
+  }
+  </script>
+
+  <style>
+    :root {
+      --bg: #111318;
+      --panel: #191c23;
+      --panel2: #20242d;
+      --border: #303642;
+      --text: #e9edf5;
+      --muted: #9aa3b2;
+      --accent: #6ea8fe;
+      --danger: #ff6b6b;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      overflow: hidden;
+      background: var(--bg);
+      color: var(--text);
+      font-family:
+        Inter,
+        ui-sans-serif,
+        system-ui,
+        -apple-system,
+        BlinkMacSystemFont,
+        "Segoe UI",
+        sans-serif;
+    }
+
+    button,
+    input,
+    select {
+      font: inherit;
+    }
+
+    #app {
+      width: 100%;
+      height: 100%;
+      display: grid;
+      grid-template-columns: 360px 1fr;
+    }
+
+    #sidebar {
+      height: 100%;
+      overflow-y: auto;
+      background: var(--panel);
+      border-right: 1px solid var(--border);
+      padding: 18px;
+      z-index: 10;
+    }
+
+    h1 {
+      font-size: 22px;
+      margin: 0 0 4px;
+    }
+
+    .subtitle {
+      color: var(--muted);
+      font-size: 13px;
+      margin-bottom: 20px;
+    }
+
+    h2 {
+      font-size: 14px;
+      margin: 20px 0 9px;
+      color: #fff;
+    }
+
+    .toolbar {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+
+    button {
+      border: 1px solid var(--border);
+      background: var(--panel2);
+      color: var(--text);
+      border-radius: 6px;
+      padding: 7px 10px;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background: #292e39;
+    }
+
+    button.primary {
+      background: var(--accent);
+      color: #08101e;
+      border-color: var(--accent);
+      font-weight: 600;
+    }
+
+    .move-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .move-card {
+      border: 1px solid var(--border);
+      background: #15181e;
+      border-radius: 8px;
+      padding: 10px;
+    }
+
+    .move-card-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .move-card-header select {
+      flex: 1;
+    }
+
+    .move-card-controls {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 10px;
+      margin-top: 9px;
+      align-items: center;
+    }
+
+    .color-control {
+      width: 42px;
+      height: 30px;
+      padding: 2px;
+      border: 1px solid var(--border);
+      border-radius: 5px;
+      background: transparent;
+    }
+
+    select {
+      min-width: 0;
+      width: 100%;
+      background: var(--panel2);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 5px;
+      padding: 7px;
+    }
+
+    .checkbox {
+      display: flex;
+      gap: 7px;
+      align-items: center;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .remove {
+      padding: 5px 8px;
+      color: #ff9b9b;
+    }
+
+    .frame-info {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 6px;
+      font-size: 13px;
+      color: var(--muted);
+    }
+
+    #frameSlider {
+      width: 100%;
+    }
+
+    .help {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.5;
+    }
+
+    #viewport {
+      position: relative;
+      min-width: 0;
+      min-height: 0;
+    }
+
+    #canvas {
+      position: absolute;
+      inset: 0;
+    }
+
+    #canvas canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+    }
+
+    #status {
+      position: absolute;
+      left: 14px;
+      bottom: 12px;
+      padding: 7px 10px;
+      background: rgba(10, 12, 16, .75);
+      border: 1px solid rgba(255,255,255,.1);
+      border-radius: 6px;
+      color: var(--muted);
+      font-size: 12px;
+      pointer-events: none;
+    }
+
+    #legend {
+      position: absolute;
+      top: 12px;
+      right: 12px;
+      padding: 9px 11px;
+      background: rgba(10, 12, 16, .78);
+      border: 1px solid rgba(255,255,255,.1);
+      border-radius: 7px;
+      font-size: 12px;
+      min-width: 150px;
+      pointer-events: none;
+    }
+
+    .legend-row {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      margin: 4px 0;
+    }
+
+    .legend-color {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      flex: 0 0 auto;
+    }
+
+    .error {
+      color: var(--danger);
+      white-space: pre-wrap;
+    }
+
+    .hint {
+      margin-top: 7px;
+      font-size: 11px;
+      color: var(--muted);
+    }
+
+    @media (max-width: 800px) {
+      #app {
+        grid-template-columns: 290px 1fr;
+      }
+    }
+  </style>
+</head>
+
+<body>
+<div id="app">
+
+  <aside id="sidebar">
+    <h1>SS Compare</h1>
+    <div class="subtitle">
+      Compare sideways movement in 3D
+    </div>
+
+    <div class="toolbar">
+      <button id="addMove" class="primary">+ Add move</button>
+      <button id="resetCamera">Reset camera</button>
+    </div>
+
+    <h2>Moves</h2>
+    <div id="moveList" class="move-list"></div>
+
+    <h2>Frame</h2>
+
+    <div class="frame-info">
+      <span>Frame</span>
+      <strong id="frameValue">0</strong>
+    </div>
+
+    <input
+      id="frameSlider"
+      type="range"
+      min="0"
+      max="0"
+      step="1"
+      value="0"
+    >
+
+    <h2>Display</h2>
+
+    <label class="checkbox">
+      <input type="checkbox" id="showOrigin" checked>
+      Show origin marker
+    </label>
+
+    <div class="hint">
+      Left mouse drag: orbit<br>
+      Mouse wheel: zoom<br>
+      Right mouse drag: pan
+    </div>
+
+    <h2>Measurement error</h2>
+
+    <div class="help">
+      Multiple recordings of the same move are overlaid at the selected
+      frame. The first recording is shown prominently and subsequent
+      recordings are shown transparently, making the spatial measurement
+      spread visible.
+    </div>
+
+    <div id="loadError" class="error"></div>
+  </aside>
+
+  <main id="viewport">
+    <div id="canvas"></div>
+    <div id="legend"></div>
+    <div id="status">Loading catalog…</div>
+  </main>
+
+</div>
+
+<script type="module">
+  /*
+   * Both imports now resolve through the import map above.
+   *
+   * In particular, OrbitControls internally does:
+   *
+   *   import { ... } from "three";
+   *
+   * and the import map resolves that "three" specifier.
+   */
+  import * as THREE from "three";
+
+  import { OrbitControls } from
+    "three/addons/controls/OrbitControls.js";
+
+    // Unreal Engine coordinate convention:
+    //   +X = forward
+    //   +Y = right
+    //   +Z = up
+    //
+    // Three.js normally uses +Y as up.
+    // Set its global default before creating the scene objects.
+    THREE.Object3D.DEFAULT_UP.set(0, 0, 1);
+
+  /* ============================================================
+     Configuration
+     ============================================================ */
+
+  const COLORS = [
+    "#ff4d4d",
+    "#4da6ff",
+    "#4dff88",
+    "#ffd24d",
+    "#c77dff",
+    "#ff8c42",
+    "#42e6d4",
+    "#ff66b3"
+  ];
+
+  const CYLINDER_SEGMENTS = 16;
+
+
+  /* ============================================================
+     DOM
+     ============================================================ */
+
+  const canvasHost =
+    document.querySelector("#canvas");
+
+  const moveList =
+    document.querySelector("#moveList");
+
+  const addMoveButton =
+    document.querySelector("#addMove");
+
+  const resetCameraButton =
+    document.querySelector("#resetCamera");
+
+  const frameSlider =
+    document.querySelector("#frameSlider");
+
+  const frameValue =
+    document.querySelector("#frameValue");
+
+  const legend =
+    document.querySelector("#legend");
+
+  const status =
+    document.querySelector("#status");
+
+  const loadError =
+    document.querySelector("#loadError");
+
+  const showOrigin =
+    document.querySelector("#showOrigin");
+
+
+  /* ============================================================
+     Three.js
+     ============================================================ */
+
+  const scene = new THREE.Scene();
+
+  scene.background =
+    new THREE.Color("#111318");
+
+
+  const camera =
+    new THREE.PerspectiveCamera(
+      55,
+      1,
+      0.1,
+      10000
+    );
+
+  camera.position.set(
+    450,
+    -650,
+    380
+  );
+
+
+  const renderer =
+    new THREE.WebGLRenderer({
+      antialias: true
+    });
+
+  renderer.setPixelRatio(
+    Math.min(window.devicePixelRatio, 2)
+  );
+
+  renderer.outputColorSpace =
+    THREE.SRGBColorSpace;
+
+  canvasHost.appendChild(
+    renderer.domElement
+  );
+
+
+  const controls =
+    new OrbitControls(
+      camera,
+      renderer.domElement
+    );
+
+  controls.enableDamping = true;
+  controls.dampingFactor = 0.08;
+
+  controls.target.set(
+    0,
+    0,
+    80
+  );
+
+  controls.minDistance = 20;
+  controls.maxDistance = 5000;
+
+
+  /* ============================================================
+     Lighting / world
+     ============================================================ */
+
+  scene.add(
+    new THREE.HemisphereLight(
+      0xffffff,
+      0x303030,
+      2
+    )
+  );
+
+  const floorGrid = new THREE.GridHelper(
+	  1000,
+	  40,
+	  0x39404c,
+	  0x242932
+  );
+  floorGrid.rotation.x = Math.PI / 2;
+  
+  scene.add(floorGrid);
+
+  const verticalGrid =
+    new THREE.GridHelper(
+      1000,
+      40,
+      0x39404c,
+      0x242932
+    );
+
+  scene.add(verticalGrid);
+
+
+  /*
+   * Independent origin marker.
+   *
+   * Z is the vertical axis, so this extends from:
+   *
+   *     (0, 0, 0)
+   *
+   * to:
+   *
+   *     (0, 0, 200)
+   */
+  const originGeometry =
+    new THREE.BufferGeometry().setFromPoints([
+      new THREE.Vector3(0, 0, 0),
+      new THREE.Vector3(0, 0, 200)
+    ]);
+
+  const originMaterial =
+    new THREE.LineBasicMaterial({
+      color: 0xffffff
+    });
+
+  const originLine =
+    new THREE.Line(
+      originGeometry,
+      originMaterial
+    );
+
+  scene.add(originLine);
+
+
+  /* ============================================================
+     Application state
+     ============================================================ */
+
+  let catalog = [];
+
+  let selectedMoves = [];
+
+  let currentFrame = 0;
+
+
+  /* ============================================================
+     Skeleton
+     ============================================================ */
+
+  const skeletonEdges = [
+    ["head", "neck"],
+    ["neck", "upper_torso"],
+
+    ["upper_torso", "left_shoulder"],
+    ["upper_torso", "right_shoulder"],
+
+    ["left_shoulder", "left_elbow"],
+    ["right_shoulder", "right_elbow"],
+
+    ["left_elbow", "left_hand"],
+    ["right_elbow", "right_hand"],
+
+    ["upper_torso", "lower_torso"],
+
+    ["lower_torso", "left_pelvis"],
+    ["lower_torso", "right_pelvis"],
+
+    ["left_pelvis", "left_knee"],
+    ["right_pelvis", "right_knee"],
+
+    ["left_knee", "left_ankle"],
+    ["right_knee", "right_ankle"]
+  ];
+
+
+  const hurtKeys = new Set([
+    "left_ankle",
+    "right_ankle",
+    "left_hand",
+    "right_hand",
+    "left_knee",
+    "right_knee",
+    "left_elbow",
+    "right_elbow",
+    "head",
+    "left_shoulder",
+    "right_shoulder",
+    "upper_torso",
+    "left_pelvis",
+    "right_pelvis"
+  ]);
+
+
+  /* ============================================================
+     Helpers
+     ============================================================ */
+
+  function hexToNumber(hex) {
+    return parseInt(
+      hex.replace("#", ""),
+      16
+    );
+  }
+
+
+  /*
+   * Hurt cylinders have priority over collision spheres.
+   */
+  function getBodyPart(frame, name) {
+    if (
+      frame?.hurt_cylinders?.[name]
+    ) {
+      return frame.hurt_cylinders[name];
+    }
+
+    if (
+      frame?.collision_spheres?.[name]
+    ) {
+      return frame.collision_spheres[name];
+    }
+
+    return null;
+  }
+
+
+  function centerOf(part) {
+    if (!part?.center) {
+      return null;
+    }
+
+    return new THREE.Vector3(
+      Number(part.center[0]) || 0,
+      Number(part.center[1]) || 0,
+      Number(part.center[2]) || 0
+    );
+  }
+
+
+  /*
+   * The requested behavior when a move has fewer frames:
+   *
+   *     frame = min(requestedFrame, lastFrame)
+   */
+  function getFrameForMove(
+    recording,
+    frameIndex
+  ) {
+    if (
+      !Array.isArray(recording) ||
+      recording.length === 0
+    ) {
+      return null;
+    }
+
+    const index = Math.min(
+      frameIndex,
+      recording.length - 1
+    );
+
+    return recording[index] || null;
+  }
+
+
+  /* ============================================================
+     Hurt cylinder
+     ============================================================ */
+
+  function makeCylinderWireframe(
+    part,
+    color,
+    opacity
+  ) {
+    const group =
+      new THREE.Group();
+
+    const center =
+      centerOf(part);
+
+    if (!center) {
+      return group;
+    }
+
+    const radius =
+      Number(part.radius) || 0;
+
+    const halfHeight =
+      Number(part.half_height) || 0;
+
+    if (radius <= 0) {
+      return group;
+    }
+
+    const vertices = [];
+
+    /*
+     * Cylinder is axis-aligned with Z.
+     */
+    for (
+      let i = 0;
+      i < CYLINDER_SEGMENTS;
+      i++
+    ) {
+      const next =
+        (i + 1) %
+        CYLINDER_SEGMENTS;
+
+      const a =
+        (i / CYLINDER_SEGMENTS) *
+        Math.PI * 2;
+
+      const b =
+        (next / CYLINDER_SEGMENTS) *
+        Math.PI * 2;
+
+      const bottomA =
+        new THREE.Vector3(
+          center.x + Math.cos(a) * radius,
+          center.y + Math.sin(a) * radius,
+          center.z - halfHeight
+        );
+
+      const bottomB =
+        new THREE.Vector3(
+          center.x + Math.cos(b) * radius,
+          center.y + Math.sin(b) * radius,
+          center.z - halfHeight
+        );
+
+      const topA =
+        new THREE.Vector3(
+          center.x + Math.cos(a) * radius,
+          center.y + Math.sin(a) * radius,
+          center.z + halfHeight
+        );
+
+      const topB =
+        new THREE.Vector3(
+          center.x + Math.cos(b) * radius,
+          center.y + Math.sin(b) * radius,
+          center.z + halfHeight
+        );
+
+      /*
+       * Bottom circle.
+       */
+      vertices.push(
+        bottomA,
+        bottomB
+      );
+
+      /*
+       * Top circle.
+       */
+      vertices.push(
+        topA,
+        topB
+      );
+
+      /*
+       * Vertical edge.
+       */
+      vertices.push(
+        bottomA,
+        topA
+      );
+    }
+
+
+    const geometry =
+      new THREE.BufferGeometry()
+        .setFromPoints(vertices);
+
+
+    const material =
+      new THREE.LineBasicMaterial({
+        color,
+        transparent: true,
+        opacity
+      });
+
+
+    group.add(
+      new THREE.LineSegments(
+        geometry,
+        material
+      )
+    );
+
+    return group;
+  }
+
+
+  /* ============================================================
+     Skeleton
+     ============================================================ */
+
+  function makeSkeleton(
+    frame,
+    color,
+    opacity
+  ) {
+    const vertices = [];
+
+    for (
+      const [aName, bName]
+      of skeletonEdges
+    ) {
+      const a =
+        centerOf(
+          getBodyPart(
+            frame,
+            aName
+          )
+        );
+
+      const b =
+        centerOf(
+          getBodyPart(
+            frame,
+            bName
+          )
+        );
+
+      if (!a || !b) {
+        continue;
+      }
+
+      vertices.push(a, b);
+    }
+
+    if (!vertices.length) {
+      return new THREE.Group();
+    }
+
+    const geometry =
+      new THREE.BufferGeometry()
+        .setFromPoints(vertices);
+
+    const material =
+      new THREE.LineBasicMaterial({
+        color,
+        transparent: opacity < 1,
+        opacity
+      });
+
+    return new THREE.LineSegments(
+      geometry,
+      material
+    );
+  }
+
+
+  /* ============================================================
+     Rotation indicator
+     ============================================================ */
+
+  function makeRotationIndicator(
+    frame,
+    color,
+    opacity
+  ) {
+    const group =
+      new THREE.Group();
+
+
+    /*
+     * The specification says that the centroid's X/Y comes
+     * from the lower torso collision sphere and Z = 0.
+     */
+    const lowerTorso =
+      frame?.collision_spheres
+        ?.lower_torso;
+
+    if (!lowerTorso) {
+      return group;
+    }
+
+
+    const cx =
+      Number(lowerTorso.center?.[0]) || 0;
+
+    const cy =
+      Number(lowerTorso.center?.[1]) || 0;
+
+    const rotation =
+      Number(frame.rotation) || 0;
+
+
+    const start =
+      new THREE.Vector3(
+        cx,
+        cy,
+        0
+      );
+
+
+    /*
+     * 0 radians = X+
+     * pi/2 radians = Y+
+     */
+    const end =
+      new THREE.Vector3(
+        cx + Math.cos(rotation) * 100,
+        cy + Math.sin(rotation) * 100,
+        0
+      );
+
+
+    const geometry =
+      new THREE.BufferGeometry()
+        .setFromPoints([
+          start,
+          end
+        ]);
+
+
+    const material =
+      new THREE.LineBasicMaterial({
+        color,
+        transparent: opacity < 1,
+        opacity
+      });
+
+
+    group.add(
+      new THREE.Line(
+        geometry,
+        material
+      )
+    );
+
+
+    /*
+     * Arrow head.
+     */
+    const direction =
+      new THREE.Vector3()
+        .subVectors(end, start)
+        .normalize();
+
+    const side =
+      new THREE.Vector3(
+        -direction.y,
+        direction.x,
+        0
+      ).normalize();
+
+    const arrowSize = 12;
+
+    const p1 =
+      end.clone()
+        .sub(
+          direction.clone()
+            .multiplyScalar(arrowSize)
+        )
+        .add(
+          side.clone()
+            .multiplyScalar(
+              arrowSize * 0.45
+            )
+        );
+
+    const p2 =
+      end.clone()
+        .sub(
+          direction.clone()
+            .multiplyScalar(arrowSize)
+        )
+        .sub(
+          side.clone()
+            .multiplyScalar(
+              arrowSize * 0.45
+            )
+        );
+
+
+    const arrowGeometry =
+      new THREE.BufferGeometry()
+        .setFromPoints([
+          end, p1,
+          end, p2
+        ]);
+
+
+    group.add(
+      new THREE.LineSegments(
+        arrowGeometry,
+        material.clone()
+      )
+    );
+
+
+    return group;
+  }
+
+
+  /* ============================================================
+     Move rendering
+     ============================================================ */
+
+  function rebuildMoveVisual(
+    moveState
+  ) {
+    if (!moveState.data) {
+      return;
+    }
+
+
+    /*
+     * Remove the previous frame's visualization.
+     */
+    while (
+      moveState.group.children.length
+    ) {
+      const child =
+        moveState.group.children.pop();
+
+      child.traverse(object => {
+        if (object.geometry) {
+          object.geometry.dispose();
+        }
+
+        if (object.material) {
+          if (Array.isArray(object.material)) {
+            object.material.forEach(
+              material => material.dispose()
+            );
+          } else {
+            object.material.dispose();
+          }
+        }
+      });
+    }
+
+
+    const color =
+      hexToNumber(
+        moveState.color
+      );
+
+
+    const recordings =
+      Array.isArray(moveState.data.frames)
+        ? moveState.data.frames
+        : [];
+
+
+    /*
+     * Every frames[sample] is a separate recording.
+     */
+    for (
+      let sample = 0;
+      sample < recordings.length;
+      sample++
+    ) {
+      const recording =
+        recordings[sample];
+
+      const frame =
+        getFrameForMove(
+          recording,
+          currentFrame
+        );
+
+      if (!frame) {
+        continue;
+      }
+
+
+      /*
+       * First sample is emphasized.
+       * Later samples show the measurement spread.
+       */
+      const opacity =
+        recordings.length <= 1
+          ? 1
+          : sample === 0
+            ? 0.95
+            : 0.22;
+
+
+      /*
+       * Hurt cylinders.
+       */
+      for (
+        const key of hurtKeys
+      ) {
+        const cylinder =
+          frame.hurt_cylinders?.[key];
+
+        if (!cylinder) {
+          continue;
+        }
+
+        moveState.group.add(
+          makeCylinderWireframe(
+            cylinder,
+            color,
+            opacity
+          )
+        );
+      }
+
+
+      /*
+       * Skeleton.
+       */
+      moveState.group.add(
+        makeSkeleton(
+          frame,
+          color,
+          opacity
+        )
+      );
+
+
+      /*
+       * Rotation indicator.
+       */
+      moveState.group.add(
+        makeRotationIndicator(
+          frame,
+          color,
+          opacity
+        )
+      );
+    }
+
+
+    /*
+     * Mirroring is done around the world Y=0 plane.
+     *
+     * This changes:
+     *
+     *   +Y -> -Y
+     *
+     * while leaving X/Z unchanged.
+     */
+    moveState.group.scale.y =
+      moveState.mirrored
+        ? 1
+        : -1;
+  }
+
+
+  /* ============================================================
+     Move cards
+     ============================================================ */
+
+  function populateCatalogSelect(
+    select
+  ) {
+    select.innerHTML = "";
+
+    for (
+      let i = 0;
+      i < catalog.length;
+      i++
+    ) {
+      const item =
+        catalog[i];
+
+      const option =
+        document.createElement(
+          "option"
+        );
+
+      option.value =
+        String(i);
+
+      option.textContent =
+        `${item.game} ${item.game_version} — ` +
+        `${item.character_name} — ${item.move}`;
+
+      select.appendChild(option);
+    }
+  }
+
+
+  function createMoveState(
+    catalogItem,
+    color
+  ) {
+    const state = {
+      catalogItem,
+      data: null,
+      color,
+      mirrored: false,
+      group: new THREE.Group()
+    };
+
+    scene.add(state.group);
+
+    return state;
+  }
+
+
+  function createMoveCard(
+    state
+  ) {
+    const card =
+      document.createElement(
+        "div"
+      );
+
+    card.className =
+      "move-card";
+
+
+    const header =
+      document.createElement(
+        "div"
+      );
+
+    header.className =
+      "move-card-header";
+
+
+    const select =
+      document.createElement(
+        "select"
+      );
+
+    populateCatalogSelect(
+      select
+    );
+
+
+    const catalogIndex =
+      catalog.indexOf(
+        state.catalogItem
+      );
+
+    select.value =
+      String(
+        catalogIndex >= 0
+          ? catalogIndex
+          : 0
+      );
+
+
+    const remove =
+      document.createElement(
+        "button"
+      );
+
+    remove.className =
+      "remove";
+
+    remove.textContent =
+      "×";
+
+    remove.title =
+      "Remove move";
+
+
+    header.append(
+      select,
+      remove
+    );
+
+
+    const controlsRow =
+      document.createElement(
+        "div"
+      );
+
+    controlsRow.className =
+      "move-card-controls";
+
+
+    const mirrorLabel =
+      document.createElement(
+        "label"
+      );
+
+    mirrorLabel.className =
+      "checkbox";
+
+
+    const mirror =
+      document.createElement(
+        "input"
+      );
+
+    mirror.type =
+      "checkbox";
+
+    mirror.checked =
+      state.mirrored;
+
+
+    mirrorLabel.append(
+      mirror,
+      document.createTextNode(
+        "Mirror"
+      )
+    );
+
+
+    const color =
+      document.createElement(
+        "input"
+      );
+
+    color.type =
+      "color";
+
+    color.className =
+      "color-control";
+
+    color.value =
+      state.color;
+
+    color.title =
+      "Move color";
+
+
+    controlsRow.append(
+      mirrorLabel,
+      color
+    );
+
+
+    card.append(
+      header,
+      controlsRow
+    );
+
+
+    select.addEventListener(
+      "change",
+      async () => {
+        const item =
+          catalog[
+            Number(select.value)
+          ];
+
+        state.catalogItem =
+          item;
+
+        state.data = null;
+
+        await loadMoveData(
+          state
+        );
+
+        updateFrameRange();
+        updateLegend();
+      }
+    );
+
+
+    mirror.addEventListener(
+      "change",
+      () => {
+        state.mirrored =
+          mirror.checked;
+
+        rebuildMoveVisual(
+          state
+        );
+      }
+    );
+
+
+    color.addEventListener(
+      "input",
+      () => {
+        state.color =
+          color.value;
+
+        rebuildMoveVisual(
+          state
+        );
+
+        updateLegend();
+      }
+    );
+
+
+    remove.addEventListener(
+      "click",
+      () => {
+        const index =
+          selectedMoves.indexOf(
+            state
+          );
+
+        if (index >= 0) {
+          selectedMoves.splice(
+            index,
+            1
+          );
+        }
+
+        scene.remove(
+          state.group
+        );
+
+        card.remove();
+
+        updateFrameRange();
+        updateLegend();
+      }
+    );
+
+
+    return card;
+  }
+
+
+  function addMove(
+    catalogItem = null
+  ) {
+    if (!catalog.length) {
+      return;
+    }
+
+
+    const index =
+      selectedMoves.length;
+
+
+    const item =
+      catalogItem ||
+      catalog[
+        Math.min(
+          index,
+          catalog.length - 1
+        )
+      ];
+
+
+    const state =
+      createMoveState(
+        item,
+        COLORS[
+          index % COLORS.length
+        ]
+      );
+
+
+    selectedMoves.push(
+      state
+    );
+
+
+    const card =
+      createMoveCard(
+        state
+      );
+
+    moveList.appendChild(
+      card
+    );
+
+
+    loadMoveData(state)
+      .then(() => {
+        updateFrameRange();
+        updateLegend();
+      });
+  }
+
+
+  /* ============================================================
+     Loading move data
+     ============================================================ */
+
+  async function loadMoveData(
+    state
+  ) {
+    try {
+      status.textContent =
+        `Loading ${state.catalogItem.character_name} — ` +
+        `${state.catalogItem.move}…`;
+
+
+      const response =
+        await fetch(
+          `./data/${encodeURIComponent(
+            state.catalogItem.file_name
+          )}`
+        );
+
+
+      if (!response.ok) {
+        throw new Error(
+          `HTTP ${response.status} while loading ` +
+          state.catalogItem.file_name
+        );
+      }
+
+
+      state.data =
+        await response.json();
+
+
+      rebuildMoveVisual(
+        state
+      );
+
+
+      status.textContent =
+        `${selectedMoves.length} move(s) loaded`;
+
+      loadError.textContent = "";
+    }
+    catch (error) {
+      console.error(error);
+
+      status.textContent =
+        "Error loading data";
+
+      loadError.textContent =
+        `Could not load ${state.catalogItem.file_name}\n` +
+        `${error.message}`;
+    }
+  }
+
+
+  /* ============================================================
+     Frame control
+     ============================================================ */
+
+  function getMaximumFrameCount() {
+    let maximum = 0;
+
+
+    for (
+      const state of selectedMoves
+    ) {
+      if (
+        !state.data ||
+        !Array.isArray(
+          state.data.frames
+        )
+      ) {
+        continue;
+      }
+
+
+      for (
+        const recording
+        of state.data.frames
+      ) {
+        maximum =
+          Math.max(
+            maximum,
+            recording.length
+          );
+      }
+    }
+
+
+    return Math.max(
+      0,
+      maximum - 1
+    );
+  }
+
+
+  function updateFrameRange() {
+    const max =
+      getMaximumFrameCount();
+
+
+    frameSlider.max =
+      String(max);
+
+
+    currentFrame =
+      Math.min(
+        currentFrame,
+        max
+      );
+
+
+    frameSlider.value =
+      String(currentFrame);
+
+    frameValue.textContent =
+      String(currentFrame);
+
+
+    for (
+      const state of selectedMoves
+    ) {
+      rebuildMoveVisual(
+        state
+      );
+    }
+  }
+
+
+  frameSlider.addEventListener(
+    "input",
+    () => {
+      currentFrame =
+        Number(
+          frameSlider.value
+        );
+
+      frameValue.textContent =
+        String(currentFrame);
+
+
+      for (
+        const state
+        of selectedMoves
+      ) {
+        rebuildMoveVisual(
+          state
+        );
+      }
+    }
+  );
+
+
+  /* ============================================================
+     Legend
+     ============================================================ */
+
+  function updateLegend() {
+    legend.innerHTML = "";
+
+
+    for (
+      const state
+      of selectedMoves
+    ) {
+      const row =
+        document.createElement(
+          "div"
+        );
+
+      row.className =
+        "legend-row";
+
+
+      const swatch =
+        document.createElement(
+          "span"
+        );
+
+      swatch.className =
+        "legend-color";
+
+      swatch.style.background =
+        state.color;
+
+
+      const text =
+        document.createElement(
+          "span"
+        );
+
+
+      const item =
+        state.catalogItem;
+
+
+      text.textContent =
+        `${item.game} — ${item.character_name} — ${item.move}` +
+        (
+          state.mirrored
+            ? " (mirrored)"
+            : ""
+        );
+
+
+      row.append(
+        swatch,
+        text
+      );
+
+      legend.appendChild(
+        row
+      );
+    }
+  }
+
+
+  /* ============================================================
+     Camera
+     ============================================================ */
+
+  resetCameraButton.addEventListener(
+    "click",
+    () => {
+      camera.position.set(
+        450,
+        -650,
+        380
+      );
+
+      controls.target.set(
+        0,
+        0,
+        80
+      );
+
+      controls.update();
+    }
+  );
+
+
+  /* ============================================================
+     Origin
+     ============================================================ */
+
+  showOrigin.addEventListener(
+    "change",
+    () => {
+      originLine.visible =
+        showOrigin.checked;
+    }
+  );
+
+
+  /* ============================================================
+     Catalog
+     ============================================================ */
+
+  async function loadCatalog() {
+    try {
+      const response =
+        await fetch(
+          "./catalog.json"
+        );
+
+
+      if (!response.ok) {
+        throw new Error(
+          `HTTP ${response.status} while loading catalog.json`
+        );
+      }
+
+
+      catalog =
+        await response.json();
+
+
+      if (!Array.isArray(catalog)) {
+        throw new Error(
+          "catalog.json must contain an array"
+        );
+      }
+
+
+      if (catalog.length === 0) {
+        throw new Error(
+          "catalog.json contains no entries"
+        );
+      }
+
+
+      loadError.textContent =
+        "";
+
+
+      /*
+       * Start with two comparison entries.
+       */
+      addMove(
+        catalog[0]
+      );
+
+
+      if (catalog.length > 1) {
+        addMove(
+          catalog[1]
+        );
+      }
+
+
+      updateLegend();
+    }
+    catch (error) {
+      console.error(error);
+
+      status.textContent =
+        "Could not load catalog.json";
+
+      loadError.textContent =
+        `Could not load catalog.json\n` +
+        error.message;
+    }
+  }
+
+
+  addMoveButton.addEventListener(
+    "click",
+    () => {
+      addMove();
+    }
+  );
+
+
+  /* ============================================================
+     Resize / render loop
+     ============================================================ */
+
+  function resize() {
+    const width =
+      canvasHost.clientWidth;
+
+    const height =
+      canvasHost.clientHeight;
+
+
+    camera.aspect =
+      width /
+      Math.max(height, 1);
+
+    camera.updateProjectionMatrix();
+
+
+    renderer.setSize(
+      width,
+      height,
+      false
+    );
+  }
+
+
+  window.addEventListener(
+    "resize",
+    resize
+  );
+
+
+  function animate() {
+    requestAnimationFrame(
+      animate
+    );
+
+    controls.update();
+
+    renderer.render(
+      scene,
+      camera
+    );
+  }
+
+
+  resize();
+  loadCatalog();
+  animate();
+
+</script>
+
+</body>
+</html>
