@@ -192,7 +192,13 @@ async function loadMove(item){
   const r=await fetch("./data/"+encodeURIComponent(item.file_name),{cache:"no-store"});
   if(!r.ok) throw Error("Could not load data/"+item.file_name);
   const data=await r.json();
-  state.selected.push({catalog:item,data,color:COLORS[state.selected.length%COLORS.length],mirror:false});
+  state.selected.push({
+    catalog:item,
+    data,
+    color:COLORS[state.selected.length%COLORS.length],
+    mirror:false,
+    visible:true
+  });
   renderMoveList(); updateFrameRange(); updateScene(); updateLegend();
 }
 function removeMove(index){state.selected.splice(index,1);renderMoveList();updateFrameRange();updateScene();updateLegend();}
@@ -206,11 +212,19 @@ function renderMoveList(){
         <button class="remove" data-remove="${i}" title="Remove">×</button>
       </div>
       <div class="moveControls">
-        <label><input type="checkbox" data-mirror="${i}" ${m.mirror?"checked":""}> Mirror</label>
+        <label>
+          <input type="checkbox" data-visible="${i}" ${m.visible ? "checked" : ""}>
+          Visible
+        </label>
+        <label>
+          <input type="checkbox" data-mirror="${i}" ${m.mirror ? "checked" : ""}>
+          Mirror
+        </label>
         <span>${m.data.frames[0]?.length||0} frames · ${m.data.frames.length} samples</span>
       </div>
     </div>`).join("");
   movesEl.querySelectorAll("[data-color]").forEach(el=>el.oninput=e=>{state.selected[+e.target.dataset.color].color=e.target.value;updateScene();updateLegend();});
+  movesEl.querySelectorAll("[data-visible]").forEach(el=>{el.onchange=e=>{state.selected[+e.target.dataset.visible].visible=e.target.checked;updateScene();};});
   movesEl.querySelectorAll("[data-mirror]").forEach(el=>el.onchange=e=>{state.selected[+e.target.dataset.mirror].mirror=e.target.checked;updateScene();updateLegend();});
   movesEl.querySelectorAll("[data-remove]").forEach(el=>el.onclick=()=>removeMove(+el.dataset.remove));
 }
@@ -332,7 +346,10 @@ function buildMoveVisual(move){
 function updateScene(){
   if(!state.root)return;
   clearRoot();
-  state.selected.forEach(m=>state.root.add(buildMoveVisual(m)));
+  state.selected.forEach(m=>{
+    if(!m.visible) return;
+    state.root.add(buildMoveVisual(m));
+  });
 }
 function angleForMove(move){
   const frames=frameAt(move,state.frame);
