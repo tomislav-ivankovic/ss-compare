@@ -1,1865 +1,560 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>SS Compare</title>
-
-  <!--
-    OrbitControls imports "three" as a bare module specifier.
-    The import map tells the browser where that module lives.
-  -->
-  <script type="importmap">
-  {
-    "imports": {
-      "three": "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js",
-      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/"
-    }
-  }
-  </script>
-
-  <style>
-    :root {
-      --bg: #111318;
-      --panel: #191c23;
-      --panel2: #20242d;
-      --border: #303642;
-      --text: #e9edf5;
-      --muted: #9aa3b2;
-      --accent: #6ea8fe;
-      --danger: #ff6b6b;
-    }
-
-    * {
-      box-sizing: border-box;
-    }
-
-    html,
-    body {
-      width: 100%;
-      height: 100%;
-      margin: 0;
-      overflow: hidden;
-      background: var(--bg);
-      color: var(--text);
-      font-family:
-        Inter,
-        ui-sans-serif,
-        system-ui,
-        -apple-system,
-        BlinkMacSystemFont,
-        "Segoe UI",
-        sans-serif;
-    }
-
-    button,
-    input,
-    select {
-      font: inherit;
-    }
-
-    #app {
-      width: 100%;
-      height: 100%;
-      display: grid;
-      grid-template-columns: 360px 1fr;
-    }
-
-    #sidebar {
-      height: 100%;
-      overflow-y: auto;
-      background: var(--panel);
-      border-right: 1px solid var(--border);
-      padding: 18px;
-      z-index: 10;
-    }
-
-    h1 {
-      font-size: 22px;
-      margin: 0 0 4px;
-    }
-
-    .subtitle {
-      color: var(--muted);
-      font-size: 13px;
-      margin-bottom: 20px;
-    }
-
-    h2 {
-      font-size: 14px;
-      margin: 20px 0 9px;
-      color: #fff;
-    }
-
-    .toolbar {
-      display: flex;
-      gap: 8px;
-      margin-bottom: 10px;
-    }
-
-    button {
-      border: 1px solid var(--border);
-      background: var(--panel2);
-      color: var(--text);
-      border-radius: 6px;
-      padding: 7px 10px;
-      cursor: pointer;
-    }
-
-    button:hover {
-      background: #292e39;
-    }
-
-    button.primary {
-      background: var(--accent);
-      color: #08101e;
-      border-color: var(--accent);
-      font-weight: 600;
-    }
-
-    .move-list {
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-    }
-
-    .move-card {
-      border: 1px solid var(--border);
-      background: #15181e;
-      border-radius: 8px;
-      padding: 10px;
-    }
-
-    .move-card-header {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-
-    .move-card-header select {
-      flex: 1;
-    }
-
-    .move-card-controls {
-      display: grid;
-      grid-template-columns: 1fr auto;
-      gap: 10px;
-      margin-top: 9px;
-      align-items: center;
-    }
-
-    .color-control {
-      width: 42px;
-      height: 30px;
-      padding: 2px;
-      border: 1px solid var(--border);
-      border-radius: 5px;
-      background: transparent;
-    }
-
-    select {
-      min-width: 0;
-      width: 100%;
-      background: var(--panel2);
-      color: var(--text);
-      border: 1px solid var(--border);
-      border-radius: 5px;
-      padding: 7px;
-    }
-
-    .checkbox {
-      display: flex;
-      gap: 7px;
-      align-items: center;
-      color: var(--muted);
-      font-size: 13px;
-    }
-
-    .remove {
-      padding: 5px 8px;
-      color: #ff9b9b;
-    }
-
-    .frame-info {
-      display: flex;
-      justify-content: space-between;
-      margin-bottom: 6px;
-      font-size: 13px;
-      color: var(--muted);
-    }
-
-    #frameSlider {
-      width: 100%;
-    }
-
-    .help {
-      color: var(--muted);
-      font-size: 12px;
-      line-height: 1.5;
-    }
-
-    #viewport {
-      position: relative;
-      min-width: 0;
-      min-height: 0;
-    }
-
-    #canvas {
-      position: absolute;
-      inset: 0;
-    }
-
-    #canvas canvas {
-      display: block;
-      width: 100%;
-      height: 100%;
-    }
-
-    #status {
-      position: absolute;
-      left: 14px;
-      bottom: 12px;
-      padding: 7px 10px;
-      background: rgba(10, 12, 16, .75);
-      border: 1px solid rgba(255,255,255,.1);
-      border-radius: 6px;
-      color: var(--muted);
-      font-size: 12px;
-      pointer-events: none;
-    }
-
-    #legend {
-      position: absolute;
-      top: 12px;
-      right: 12px;
-      padding: 9px 11px;
-      background: rgba(10, 12, 16, .78);
-      border: 1px solid rgba(255,255,255,.1);
-      border-radius: 7px;
-      font-size: 12px;
-      min-width: 150px;
-      pointer-events: none;
-    }
-
-    .legend-row {
-      display: flex;
-      align-items: center;
-      gap: 7px;
-      margin: 4px 0;
-    }
-
-    .legend-color {
-      width: 12px;
-      height: 12px;
-      border-radius: 50%;
-      flex: 0 0 auto;
-    }
-
-    .error {
-      color: var(--danger);
-      white-space: pre-wrap;
-    }
-
-    .hint {
-      margin-top: 7px;
-      font-size: 11px;
-      color: var(--muted);
-    }
-
-    @media (max-width: 800px) {
-      #app {
-        grid-template-columns: 290px 1fr;
-      }
-    }
-  </style>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>SS Compare</title>
+<style>
+.suggestion.active{background:#263445}
+.suggestion.active strong{color:#fff}
+:root{--bg:#11151b;--panel:#1a2029;--panel2:#222a35;--text:#e8edf3;--muted:#9ba7b5;--accent:#5fb3ff;--border:#303a48}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;overflow:hidden;background:var(--bg);color:var(--text);font:14px/1.35 system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+button,input{font:inherit}
+button{cursor:pointer}
+#app{display:grid;grid-template-columns:360px 1fr;height:100%}
+#sidebar{background:var(--panel);border-right:1px solid var(--border);display:flex;flex-direction:column;min-width:0}
+header{padding:14px 16px;border-bottom:1px solid var(--border)}
+h1{font-size:20px;margin:0 0 2px}
+.sub{color:var(--muted);font-size:12px}
+#searchWrap{padding:12px;border-bottom:1px solid var(--border);position:relative}
+#search{width:100%;padding:9px 10px;background:#10151c;color:var(--text);border:1px solid var(--border);border-radius:6px;outline:none}
+#search:focus{border-color:var(--accent)}
+#suggestions{position:absolute;z-index:20;left:12px;right:12px;top:58px;background:#10151c;border:1px solid var(--border);border-radius:6px;max-height:300px;overflow:auto;box-shadow:0 10px 30px #0008}
+.suggestion{padding:8px 10px;border-bottom:1px solid #252d38;cursor:pointer}
+.suggestion:hover{background:#202936}
+.suggestion small{display:block;color:var(--muted);margin-top:2px}
+#moves{padding:10px;overflow:auto;flex:1}
+.empty{color:var(--muted);padding:14px 4px;text-align:center}
+.move{background:var(--panel2);border:1px solid var(--border);border-radius:7px;padding:9px;margin-bottom:8px}
+.moveTop{display:flex;align-items:center;gap:8px}
+.swatch{width:26px;height:26px;border:0;padding:0;background:none}
+.moveTitle{flex:1;min-width:0}
+.moveTitle strong,.moveTitle span{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.moveTitle span{font-size:11px;color:var(--muted)}
+.remove{background:none;border:0;color:#9ba7b5;font-size:20px;padding:0 3px}
+.moveControls{display:flex;gap:12px;margin-top:8px;color:#c3ccd7;font-size:12px}
+.moveControls label{display:flex;align-items:center;gap:5px}
+#controls{padding:12px;border-top:1px solid var(--border)}
+.controlRow{display:flex;align-items:center;gap:10px;margin:8px 0}
+.controlRow label{min-width:90px;color:#c3ccd7}
+#frame{flex:1;min-width:0}
+#frameNum{width:58px;text-align:right;color:#c3ccd7}
+input[type=range]{flex:1}
+#canvas{position:relative;height:100%;background:#0b0e12}
+#viewport{position:absolute;inset:0}
+#overlay{position:absolute;left:12px;top:12px;right:12px;pointer-events:none}
+#status{display:inline-block;background:#111820d9;border:1px solid var(--border);border-radius:6px;padding:6px 8px;color:var(--muted)}
+#legend{position:absolute;right:12px;top:12px;width:min(390px,38vw);max-height:70vh;overflow:auto;pointer-events:auto}
+.legendItem{background:#111820e8;border:1px solid var(--border);border-radius:7px;margin-bottom:7px;padding:8px}
+.legendHead{display:flex;align-items:center;gap:7px;margin-bottom:5px}
+.legendDot{width:10px;height:10px;border-radius:50%;display:inline-block}
+.legendName{font-weight:650;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.legendVals{display:grid;grid-template-columns:repeat(4,1fr);gap:5px}
+.legendVal{background:#1b222c;padding:4px 5px;border-radius:4px}
+.legendVal b{display:block;color:#8f9baa;font-size:10px;font-weight:500}
+.legendVal span{display:block;margin-top:1px}
+.help{font-size:11px;color:var(--muted);margin-top:8px}
+#error{display:none;position:absolute;inset:auto 12px 12px 12px;background:#351b20;border:1px solid #71333d;color:#ffdce1;padding:10px;border-radius:7px;z-index:30;white-space:pre-wrap}
+@media(max-width:800px){
+#app{grid-template-columns:290px 1fr}
+#legend{width:45vw}
+}
+</style>
 </head>
-
 <body>
 <div id="app">
-
   <aside id="sidebar">
-    <h1>SS Compare</h1>
-    <div class="subtitle">
-      Compare sideways movement in 3D
+    <header><h1>SS Compare</h1><div class="sub">Sidestep / sidewalk movement comparison</div></header>
+    <div id="searchWrap">
+      <input id="search" autocomplete="off" placeholder="Search game, character, move…">
+      <div id="suggestions" hidden></div>
     </div>
-
-    <div class="toolbar">
-      <button id="addMove" class="primary">+ Add move</button>
-      <button id="resetCamera">Reset camera</button>
+    <div id="moves"><div class="empty">Search and select moves to compare.</div></div>
+    <div id="controls">
+      <div class="controlRow"><label for="frame">Frame</label><input id="frame" type="range" min="0" max="0" value="0"><output id="frameNum">0</output></div>
+      <div class="controlRow">
+        <label>Display</label>
+        <label><input id="showHurt" type="checkbox" checked> Hurt Cylinders</label>
+      </div>
+      <div class="controlRow">
+        <label></label>
+        <label><input id="showSkeleton" type="checkbox" checked> Skeleton</label>
+      </div>
+      <div class="controlRow">
+        <label></label>
+        <label><input id="showRotation" type="checkbox" checked> Look Direction</label>
+      </div>
+      <div class="help">Mouse: orbit · wheel: zoom · right-drag: pan · R: reset camera</div>
     </div>
-
-    <h2>Moves</h2>
-    <div id="moveList" class="move-list"></div>
-
-    <h2>Frame</h2>
-
-    <div class="frame-info">
-      <span>Frame</span>
-      <strong id="frameValue">0</strong>
-    </div>
-
-    <input
-      id="frameSlider"
-      type="range"
-      min="0"
-      max="0"
-      step="1"
-      value="0"
-    >
-
-    <h2>Display</h2>
-
-    <label class="checkbox">
-      <input type="checkbox" id="showOrigin" checked>
-      Show origin marker
-    </label>
-
-    <div class="hint">
-      Left mouse drag: orbit<br>
-      Mouse wheel: zoom<br>
-      Right mouse drag: pan
-    </div>
-
-    <h2>Measurement error</h2>
-
-    <div class="help">
-      Multiple recordings of the same move are overlaid at the selected
-      frame. The first recording is shown prominently and subsequent
-      recordings are shown transparently, making the spatial measurement
-      spread visible.
-    </div>
-
-    <div id="loadError" class="error"></div>
   </aside>
-
-  <main id="viewport">
-    <div id="canvas"></div>
+  <main id="canvas">
+    <div id="viewport"></div>
+    <div id="overlay"><div id="status">No moves selected</div></div>
     <div id="legend"></div>
-    <div id="status">Loading catalog…</div>
+    <div id="error"></div>
   </main>
-
 </div>
 
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.min.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/"}}</script>
 <script type="module">
-  /*
-   * Both imports now resolve through the import map above.
-   *
-   * In particular, OrbitControls internally does:
-   *
-   *   import { ... } from "three";
-   *
-   * and the import map resolves that "three" specifier.
-   */
-  import * as THREE from "three";
-
-  import { OrbitControls } from
-    "three/addons/controls/OrbitControls.js";
-
-    // Unreal Engine coordinate convention:
-    //   +X = forward
-    //   +Y = right
-    //   +Z = up
-    //
-    // Three.js normally uses +Y as up.
-    // Set its global default before creating the scene objects.
-    THREE.Object3D.DEFAULT_UP.set(0, 0, 1);
-
-  /* ============================================================
-     Configuration
-     ============================================================ */
-
-  const COLORS = [
-    "#ff4d4d",
-    "#4da6ff",
-    "#4dff88",
-    "#ffd24d",
-    "#c77dff",
-    "#ff8c42",
-    "#42e6d4",
-    "#ff66b3"
-  ];
-
-  const CYLINDER_SEGMENTS = 16;
-
-
-  /* ============================================================
-     DOM
-     ============================================================ */
-
-  const canvasHost =
-    document.querySelector("#canvas");
-
-  const moveList =
-    document.querySelector("#moveList");
-
-  const addMoveButton =
-    document.querySelector("#addMove");
-
-  const resetCameraButton =
-    document.querySelector("#resetCamera");
-
-  const frameSlider =
-    document.querySelector("#frameSlider");
-
-  const frameValue =
-    document.querySelector("#frameValue");
-
-  const legend =
-    document.querySelector("#legend");
-
-  const status =
-    document.querySelector("#status");
-
-  const loadError =
-    document.querySelector("#loadError");
-
-  const showOrigin =
-    document.querySelector("#showOrigin");
-
-
-  /* ============================================================
-     Three.js
-     ============================================================ */
-
-  const scene = new THREE.Scene();
-
-  scene.background =
-    new THREE.Color("#111318");
-
-
-  const camera =
-    new THREE.PerspectiveCamera(
-      55,
-      1,
-      0.1,
-      10000
-    );
-
-  camera.position.set(
-    450,
-    -650,
-    380
-  );
-
-
-  const renderer =
-    new THREE.WebGLRenderer({
-      antialias: true
-    });
-
-  renderer.setPixelRatio(
-    Math.min(window.devicePixelRatio, 2)
-  );
-
-  renderer.outputColorSpace =
-    THREE.SRGBColorSpace;
-
-  canvasHost.appendChild(
-    renderer.domElement
-  );
-
-
-  const controls =
-    new OrbitControls(
-      camera,
-      renderer.domElement
-    );
-
-  controls.enableDamping = true;
-  controls.dampingFactor = 0.08;
-
-  controls.target.set(
-    0,
-    0,
-    80
-  );
-
-  controls.minDistance = 20;
-  controls.maxDistance = 5000;
-
-
-  /* ============================================================
-     Lighting / world
-     ============================================================ */
-
-  scene.add(
-    new THREE.HemisphereLight(
-      0xffffff,
-      0x303030,
-      2
-    )
-  );
-
-  const floorGrid = new THREE.GridHelper(
-	  1000,
-	  40,
-	  0x39404c,
-	  0x242932
-  );
-  floorGrid.rotation.x = Math.PI / 2;
-  
-  scene.add(floorGrid);
-
-  const verticalGrid =
-    new THREE.GridHelper(
-      1000,
-      40,
-      0x39404c,
-      0x242932
-    );
-
-  scene.add(verticalGrid);
-
-
-  /*
-   * Independent origin marker.
-   *
-   * Z is the vertical axis, so this extends from:
-   *
-   *     (0, 0, 0)
-   *
-   * to:
-   *
-   *     (0, 0, 200)
-   */
-  const originGeometry =
-    new THREE.BufferGeometry().setFromPoints([
-      new THREE.Vector3(0, 0, 0),
-      new THREE.Vector3(0, 0, 200)
-    ]);
-
-  const originMaterial =
-    new THREE.LineBasicMaterial({
-      color: 0xffffff
-    });
-
-  const originLine =
-    new THREE.Line(
-      originGeometry,
-      originMaterial
-    );
-
-  scene.add(originLine);
-
-
-  /* ============================================================
-     Application state
-     ============================================================ */
-
-  let catalog = [];
-
-  let selectedMoves = [];
-
-  let currentFrame = 0;
-
-
-  /* ============================================================
-     Skeleton
-     ============================================================ */
-
-  const skeletonEdges = [
-    ["head", "neck"],
-    ["neck", "upper_torso"],
-
-    ["upper_torso", "left_shoulder"],
-    ["upper_torso", "right_shoulder"],
-
-    ["left_shoulder", "left_elbow"],
-    ["right_shoulder", "right_elbow"],
-
-    ["left_elbow", "left_hand"],
-    ["right_elbow", "right_hand"],
-
-    ["upper_torso", "lower_torso"],
-
-    ["lower_torso", "left_pelvis"],
-    ["lower_torso", "right_pelvis"],
-
-    ["left_pelvis", "left_knee"],
-    ["right_pelvis", "right_knee"],
-
-    ["left_knee", "left_ankle"],
-    ["right_knee", "right_ankle"]
-  ];
-
-
-  const hurtKeys = new Set([
-    "left_ankle",
-    "right_ankle",
-    "left_hand",
-    "right_hand",
-    "left_knee",
-    "right_knee",
-    "left_elbow",
-    "right_elbow",
-    "head",
-    "left_shoulder",
-    "right_shoulder",
-    "upper_torso",
-    "left_pelvis",
-    "right_pelvis"
-  ]);
-
-
-  /* ============================================================
-     Helpers
-     ============================================================ */
-
-  function hexToNumber(hex) {
-    return parseInt(
-      hex.replace("#", ""),
-      16
-    );
-  }
-
-
-  /*
-   * Hurt cylinders have priority over collision spheres.
-   */
-  function getBodyPart(frame, name) {
-    if (
-      frame?.hurt_cylinders?.[name]
-    ) {
-      return frame.hurt_cylinders[name];
-    }
-
-    if (
-      frame?.collision_spheres?.[name]
-    ) {
-      return frame.collision_spheres[name];
-    }
-
-    return null;
-  }
-
-
-  function centerOf(part) {
-    if (!part?.center) {
-      return null;
-    }
-
-    return new THREE.Vector3(
-      Number(part.center[0]) || 0,
-      Number(part.center[1]) || 0,
-      Number(part.center[2]) || 0
-    );
-  }
-
-
-  /*
-   * The requested behavior when a move has fewer frames:
-   *
-   *     frame = min(requestedFrame, lastFrame)
-   */
-  function getFrameForMove(
-    recording,
-    frameIndex
-  ) {
-    if (
-      !Array.isArray(recording) ||
-      recording.length === 0
-    ) {
-      return null;
-    }
-
-    const index = Math.min(
-      frameIndex,
-      recording.length - 1
-    );
-
-    return recording[index] || null;
-  }
-
-
-  /* ============================================================
-     Hurt cylinder
-     ============================================================ */
-
-  function makeCylinderWireframe(
-    part,
-    color,
-    opacity
-  ) {
-    const group =
-      new THREE.Group();
-
-    const center =
-      centerOf(part);
-
-    if (!center) {
-      return group;
-    }
-
-    const radius =
-      Number(part.radius) || 0;
-
-    const halfHeight =
-      Number(part.half_height) || 0;
-
-    if (radius <= 0) {
-      return group;
-    }
-
-    const vertices = [];
-
-    /*
-     * Cylinder is axis-aligned with Z.
-     */
-    for (
-      let i = 0;
-      i < CYLINDER_SEGMENTS;
-      i++
-    ) {
-      const next =
-        (i + 1) %
-        CYLINDER_SEGMENTS;
-
-      const a =
-        (i / CYLINDER_SEGMENTS) *
-        Math.PI * 2;
-
-      const b =
-        (next / CYLINDER_SEGMENTS) *
-        Math.PI * 2;
-
-      const bottomA =
-        new THREE.Vector3(
-          center.x + Math.cos(a) * radius,
-          center.y + Math.sin(a) * radius,
-          center.z - halfHeight
-        );
-
-      const bottomB =
-        new THREE.Vector3(
-          center.x + Math.cos(b) * radius,
-          center.y + Math.sin(b) * radius,
-          center.z - halfHeight
-        );
-
-      const topA =
-        new THREE.Vector3(
-          center.x + Math.cos(a) * radius,
-          center.y + Math.sin(a) * radius,
-          center.z + halfHeight
-        );
-
-      const topB =
-        new THREE.Vector3(
-          center.x + Math.cos(b) * radius,
-          center.y + Math.sin(b) * radius,
-          center.z + halfHeight
-        );
-
-      /*
-       * Bottom circle.
-       */
-      vertices.push(
-        bottomA,
-        bottomB
-      );
-
-      /*
-       * Top circle.
-       */
-      vertices.push(
-        topA,
-        topB
-      );
-
-      /*
-       * Vertical edge.
-       */
-      vertices.push(
-        bottomA,
-        topA
-      );
-    }
-
-
-    const geometry =
-      new THREE.BufferGeometry()
-        .setFromPoints(vertices);
-
-
-    const material =
-      new THREE.LineBasicMaterial({
-        color,
-        transparent: true,
-        opacity
-      });
-
-
-    group.add(
-      new THREE.LineSegments(
-        geometry,
-        material
-      )
-    );
-
-    return group;
-  }
-
-
-  /* ============================================================
-     Skeleton
-     ============================================================ */
-
-  function makeSkeleton(
-    frame,
-    color,
-    opacity
-  ) {
-    const vertices = [];
-
-    for (
-      const [aName, bName]
-      of skeletonEdges
-    ) {
-      const a =
-        centerOf(
-          getBodyPart(
-            frame,
-            aName
-          )
-        );
-
-      const b =
-        centerOf(
-          getBodyPart(
-            frame,
-            bName
-          )
-        );
-
-      if (!a || !b) {
-        continue;
-      }
-
-      vertices.push(a, b);
-    }
-
-    if (!vertices.length) {
-      return new THREE.Group();
-    }
-
-    const geometry =
-      new THREE.BufferGeometry()
-        .setFromPoints(vertices);
-
-    const material =
-      new THREE.LineBasicMaterial({
-        color,
-        transparent: opacity < 1,
-        opacity
-      });
-
-    return new THREE.LineSegments(
-      geometry,
-      material
-    );
-  }
-
-
-  /* ============================================================
-     Rotation indicator
-     ============================================================ */
-
-  function makeRotationIndicator(
-    frame,
-    color,
-    opacity
-  ) {
-    const group =
-      new THREE.Group();
-
-
-    /*
-     * The specification says that the centroid's X/Y comes
-     * from the lower torso collision sphere and Z = 0.
-     */
-    const lowerTorso =
-      frame?.collision_spheres
-        ?.lower_torso;
-
-    if (!lowerTorso) {
-      return group;
-    }
-
-
-    const cx =
-      Number(lowerTorso.center?.[0]) || 0;
-
-    const cy =
-      Number(lowerTorso.center?.[1]) || 0;
-
-    const rotation =
-      Number(frame.rotation) || 0;
-
-
-    const start =
-      new THREE.Vector3(
-        cx,
-        cy,
-        0
-      );
-
-
-    /*
-     * 0 radians = X+
-     * pi/2 radians = Y+
-     */
-    const end =
-      new THREE.Vector3(
-        cx + Math.cos(rotation) * 100,
-        cy + Math.sin(rotation) * 100,
-        0
-      );
-
-
-    const geometry =
-      new THREE.BufferGeometry()
-        .setFromPoints([
-          start,
-          end
-        ]);
-
-
-    const material =
-      new THREE.LineBasicMaterial({
-        color,
-        transparent: opacity < 1,
-        opacity
-      });
-
-
-    group.add(
-      new THREE.Line(
-        geometry,
-        material
-      )
-    );
-
-
-    /*
-     * Arrow head.
-     */
-    const direction =
-      new THREE.Vector3()
-        .subVectors(end, start)
-        .normalize();
-
-    const side =
-      new THREE.Vector3(
-        -direction.y,
-        direction.x,
-        0
-      ).normalize();
-
-    const arrowSize = 12;
-
-    const p1 =
-      end.clone()
-        .sub(
-          direction.clone()
-            .multiplyScalar(arrowSize)
-        )
-        .add(
-          side.clone()
-            .multiplyScalar(
-              arrowSize * 0.45
-            )
-        );
-
-    const p2 =
-      end.clone()
-        .sub(
-          direction.clone()
-            .multiplyScalar(arrowSize)
-        )
-        .sub(
-          side.clone()
-            .multiplyScalar(
-              arrowSize * 0.45
-            )
-        );
-
-
-    const arrowGeometry =
-      new THREE.BufferGeometry()
-        .setFromPoints([
-          end, p1,
-          end, p2
-        ]);
-
-
-    group.add(
-      new THREE.LineSegments(
-        arrowGeometry,
-        material.clone()
-      )
-    );
-
-
-    return group;
-  }
-
-
-  /* ============================================================
-     Move rendering
-     ============================================================ */
-
-  function rebuildMoveVisual(
-    moveState
-  ) {
-    if (!moveState.data) {
-      return;
-    }
-
-
-    /*
-     * Remove the previous frame's visualization.
-     */
-    while (
-      moveState.group.children.length
-    ) {
-      const child =
-        moveState.group.children.pop();
-
-      child.traverse(object => {
-        if (object.geometry) {
-          object.geometry.dispose();
-        }
-
-        if (object.material) {
-          if (Array.isArray(object.material)) {
-            object.material.forEach(
-              material => material.dispose()
-            );
-          } else {
-            object.material.dispose();
-          }
-        }
-      });
-    }
-
-
-    const color =
-      hexToNumber(
-        moveState.color
-      );
-
-
-    const recordings =
-      Array.isArray(moveState.data.frames)
-        ? moveState.data.frames
-        : [];
-
-
-    /*
-     * Every frames[sample] is a separate recording.
-     */
-    for (
-      let sample = 0;
-      sample < recordings.length;
-      sample++
-    ) {
-      const recording =
-        recordings[sample];
-
-      const frame =
-        getFrameForMove(
-          recording,
-          currentFrame
-        );
-
-      if (!frame) {
-        continue;
-      }
-
-
-      /*
-       * First sample is emphasized.
-       * Later samples show the measurement spread.
-       */
-      const opacity =
-        recordings.length <= 1
-          ? 1
-          : sample === 0
-            ? 0.95
-            : 0.22;
-
-
-      /*
-       * Hurt cylinders.
-       */
-      for (
-        const key of hurtKeys
-      ) {
-        const cylinder =
-          frame.hurt_cylinders?.[key];
-
-        if (!cylinder) {
-          continue;
-        }
-
-        moveState.group.add(
-          makeCylinderWireframe(
-            cylinder,
-            color,
-            opacity
-          )
-        );
-      }
-
-
-      /*
-       * Skeleton.
-       */
-      moveState.group.add(
-        makeSkeleton(
-          frame,
-          color,
-          opacity
-        )
-      );
-
-
-      /*
-       * Rotation indicator.
-       */
-      moveState.group.add(
-        makeRotationIndicator(
-          frame,
-          color,
-          opacity
-        )
-      );
-    }
-
-
-    /*
-     * Mirroring is done around the world Y=0 plane.
-     *
-     * This changes:
-     *
-     *   +Y -> -Y
-     *
-     * while leaving X/Z unchanged.
-     */
-    moveState.group.scale.y =
-      moveState.mirrored
-        ? 1
-        : -1;
-  }
-
-
-  /* ============================================================
-     Move cards
-     ============================================================ */
-
-  function populateCatalogSelect(
-    select
-  ) {
-    select.innerHTML = "";
-
-    for (
-      let i = 0;
-      i < catalog.length;
-      i++
-    ) {
-      const item =
-        catalog[i];
-
-      const option =
-        document.createElement(
-          "option"
-        );
-
-      option.value =
-        String(i);
-
-      option.textContent =
-        `${item.game} ${item.game_version} — ` +
-        `${item.character_name} — ${item.move}`;
-
-      select.appendChild(option);
-    }
-  }
-
-
-  function createMoveState(
-    catalogItem,
-    color
-  ) {
-    const state = {
-      catalogItem,
-      data: null,
-      color,
-      mirrored: false,
-      group: new THREE.Group()
-    };
-
-    scene.add(state.group);
-
-    return state;
-  }
-
-
-  function createMoveCard(
-    state
-  ) {
-    const card =
-      document.createElement(
-        "div"
-      );
-
-    card.className =
-      "move-card";
-
-
-    const header =
-      document.createElement(
-        "div"
-      );
-
-    header.className =
-      "move-card-header";
-
-
-    const select =
-      document.createElement(
-        "select"
-      );
-
-    populateCatalogSelect(
-      select
-    );
-
-
-    const catalogIndex =
-      catalog.indexOf(
-        state.catalogItem
-      );
-
-    select.value =
-      String(
-        catalogIndex >= 0
-          ? catalogIndex
-          : 0
-      );
-
-
-    const remove =
-      document.createElement(
-        "button"
-      );
-
-    remove.className =
-      "remove";
-
-    remove.textContent =
-      "×";
-
-    remove.title =
-      "Remove move";
-
-
-    header.append(
-      select,
-      remove
-    );
-
-
-    const controlsRow =
-      document.createElement(
-        "div"
-      );
-
-    controlsRow.className =
-      "move-card-controls";
-
-
-    const mirrorLabel =
-      document.createElement(
-        "label"
-      );
-
-    mirrorLabel.className =
-      "checkbox";
-
-
-    const mirror =
-      document.createElement(
-        "input"
-      );
-
-    mirror.type =
-      "checkbox";
-
-    mirror.checked =
-      state.mirrored;
-
-
-    mirrorLabel.append(
-      mirror,
-      document.createTextNode(
-        "Mirror"
-      )
-    );
-
-
-    const color =
-      document.createElement(
-        "input"
-      );
-
-    color.type =
-      "color";
-
-    color.className =
-      "color-control";
-
-    color.value =
-      state.color;
-
-    color.title =
-      "Move color";
-
-
-    controlsRow.append(
-      mirrorLabel,
-      color
-    );
-
-
-    card.append(
-      header,
-      controlsRow
-    );
-
-
-    select.addEventListener(
-      "change",
-      async () => {
-        const item =
-          catalog[
-            Number(select.value)
-          ];
-
-        state.catalogItem =
-          item;
-
-        state.data = null;
-
-        await loadMoveData(
-          state
-        );
-
-        updateFrameRange();
-        updateLegend();
-      }
-    );
-
-
-    mirror.addEventListener(
-      "change",
-      () => {
-        state.mirrored =
-          mirror.checked;
-
-        rebuildMoveVisual(
-          state
-        );
-      }
-    );
-
-
-    color.addEventListener(
-      "input",
-      () => {
-        state.color =
-          color.value;
-
-        rebuildMoveVisual(
-          state
-        );
-
-        updateLegend();
-      }
-    );
-
-
-    remove.addEventListener(
-      "click",
-      () => {
-        const index =
-          selectedMoves.indexOf(
-            state
-          );
-
-        if (index >= 0) {
-          selectedMoves.splice(
-            index,
-            1
-          );
-        }
-
-        scene.remove(
-          state.group
-        );
-
-        card.remove();
-
-        updateFrameRange();
-        updateLegend();
-      }
-    );
-
-
-    return card;
-  }
-
-
-  function addMove(
-    catalogItem = null
-  ) {
-    if (!catalog.length) {
-      return;
-    }
-
-
-    const index =
-      selectedMoves.length;
-
-
-    const item =
-      catalogItem ||
-      catalog[
-        Math.min(
-          index,
-          catalog.length - 1
-        )
-      ];
-
-
-    const state =
-      createMoveState(
-        item,
-        COLORS[
-          index % COLORS.length
-        ]
-      );
-
-
-    selectedMoves.push(
-      state
-    );
-
-
-    const card =
-      createMoveCard(
-        state
-      );
-
-    moveList.appendChild(
-      card
-    );
-
-
-    loadMoveData(state)
-      .then(() => {
-        updateFrameRange();
-        updateLegend();
-      });
-  }
-
-
-  /* ============================================================
-     Loading move data
-     ============================================================ */
-
-  async function loadMoveData(
-    state
-  ) {
-    try {
-      status.textContent =
-        `Loading ${state.catalogItem.character_name} — ` +
-        `${state.catalogItem.move}…`;
-
-
-      const response =
-        await fetch(
-          `./data/${encodeURIComponent(
-            state.catalogItem.file_name
-          )}`
-        );
-
-
-      if (!response.ok) {
-        throw new Error(
-          `HTTP ${response.status} while loading ` +
-          state.catalogItem.file_name
-        );
-      }
-
-
-      state.data =
-        await response.json();
-
-
-      rebuildMoveVisual(
-        state
-      );
-
-
-      status.textContent =
-        `${selectedMoves.length} move(s) loaded`;
-
-      loadError.textContent = "";
-    }
-    catch (error) {
-      console.error(error);
-
-      status.textContent =
-        "Error loading data";
-
-      loadError.textContent =
-        `Could not load ${state.catalogItem.file_name}\n` +
-        `${error.message}`;
-    }
-  }
-
-
-  /* ============================================================
-     Frame control
-     ============================================================ */
-
-  function getMaximumFrameCount() {
-    let maximum = 0;
-
-
-    for (
-      const state of selectedMoves
-    ) {
-      if (
-        !state.data ||
-        !Array.isArray(
-          state.data.frames
-        )
-      ) {
-        continue;
-      }
-
-
-      for (
-        const recording
-        of state.data.frames
-      ) {
-        maximum =
-          Math.max(
-            maximum,
-            recording.length
-          );
-      }
-    }
-
-
-    return Math.max(
-      0,
-      maximum - 1
-    );
-  }
-
-
-  function updateFrameRange() {
-    const max =
-      getMaximumFrameCount();
-
-
-    frameSlider.max =
-      String(max);
-
-
-    currentFrame =
-      Math.min(
-        currentFrame,
-        max
-      );
-
-
-    frameSlider.value =
-      String(currentFrame);
-
-    frameValue.textContent =
-      String(currentFrame);
-
-
-    for (
-      const state of selectedMoves
-    ) {
-      rebuildMoveVisual(
-        state
-      );
-    }
-  }
-
-
-  frameSlider.addEventListener(
-    "input",
-    () => {
-      currentFrame =
-        Number(
-          frameSlider.value
-        );
-
-      frameValue.textContent =
-        String(currentFrame);
-
-
-      for (
-        const state
-        of selectedMoves
-      ) {
-        rebuildMoveVisual(
-          state
-        );
-      }
-    }
-  );
-
-
-  /* ============================================================
-     Legend
-     ============================================================ */
-
-  function updateLegend() {
-    legend.innerHTML = "";
-
-
-    for (
-      const state
-      of selectedMoves
-    ) {
-      const row =
-        document.createElement(
-          "div"
-        );
-
-      row.className =
-        "legend-row";
-
-
-      const swatch =
-        document.createElement(
-          "span"
-        );
-
-      swatch.className =
-        "legend-color";
-
-      swatch.style.background =
-        state.color;
-
-
-      const text =
-        document.createElement(
-          "span"
-        );
-
-
-      const item =
-        state.catalogItem;
-
-
-      text.textContent =
-        `${item.game} — ${item.character_name} — ${item.move}` +
-        (
-          state.mirrored
-            ? " (mirrored)"
-            : ""
-        );
-
-
-      row.append(
-        swatch,
-        text
-      );
-
-      legend.appendChild(
-        row
-      );
-    }
-  }
-
-
-  /* ============================================================
-     Camera
-     ============================================================ */
-
-  resetCameraButton.addEventListener(
-    "click",
-    () => {
-      camera.position.set(
-        450,
-        -650,
-        380
-      );
-
-      controls.target.set(
-        0,
-        0,
-        80
-      );
-
-      controls.update();
-    }
-  );
-
-
-  /* ============================================================
-     Origin
-     ============================================================ */
-
-  showOrigin.addEventListener(
-    "change",
-    () => {
-      originLine.visible =
-        showOrigin.checked;
-    }
-  );
-
-
-  /* ============================================================
-     Catalog
-     ============================================================ */
-
-  async function loadCatalog() {
-    try {
-      const response =
-        await fetch(
-          "./catalog.json"
-        );
-
-
-      if (!response.ok) {
-        throw new Error(
-          `HTTP ${response.status} while loading catalog.json`
-        );
-      }
-
-
-      catalog =
-        await response.json();
-
-
-      if (!Array.isArray(catalog)) {
-        throw new Error(
-          "catalog.json must contain an array"
-        );
-      }
-
-
-      if (catalog.length === 0) {
-        throw new Error(
-          "catalog.json contains no entries"
-        );
-      }
-
-
-      loadError.textContent =
-        "";
-
-
-      /*
-       * Start with two comparison entries.
-       */
-      addMove(
-        catalog[0]
-      );
-
-
-      if (catalog.length > 1) {
-        addMove(
-          catalog[1]
-        );
-      }
-
-
-      updateLegend();
-    }
-    catch (error) {
-      console.error(error);
-
-      status.textContent =
-        "Could not load catalog.json";
-
-      loadError.textContent =
-        `Could not load catalog.json\n` +
-        error.message;
-    }
-  }
-
-
-  addMoveButton.addEventListener(
-    "click",
-    () => {
-      addMove();
-    }
-  );
-
-
-  /* ============================================================
-     Resize / render loop
-     ============================================================ */
-
-  function resize() {
-    const width =
-      canvasHost.clientWidth;
-
-    const height =
-      canvasHost.clientHeight;
-
-
-    camera.aspect =
-      width /
-      Math.max(height, 1);
-
-    camera.updateProjectionMatrix();
-
-
-    renderer.setSize(
-      width,
-      height,
-      false
-    );
-  }
-
-
-  window.addEventListener(
-    "resize",
-    resize
-  );
-
-
-  function animate() {
-    requestAnimationFrame(
-      animate
-    );
-
-    controls.update();
-
-    renderer.render(
-      scene,
-      camera
-    );
-  }
-
-
+import * as THREE from "three";
+import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+"use strict";
+
+const HURT_KEYS = [
+  "left_ankle","right_ankle","left_hand","right_hand","left_knee","right_knee",
+  "left_elbow","right_elbow","head","left_shoulder","right_shoulder","upper_torso",
+  "left_pelvis","right_pelvis"
+];
+const COLLISION_KEYS = [
+  "neck","left_elbow","right_elbow","lower_torso","left_knee","right_knee",
+  "left_ankle","right_ankle"
+];
+const BONES = [
+  ["head","neck"],["neck","upper_torso"],["upper_torso","left_shoulder"],
+  ["upper_torso","right_shoulder"],["left_shoulder","left_elbow"],
+  ["right_shoulder","right_elbow"],["left_elbow","left_hand"],
+  ["right_elbow","right_hand"],["upper_torso","lower_torso"],
+  ["lower_torso","left_pelvis"],["lower_torso","right_pelvis"],
+  ["left_pelvis","left_knee"],["right_pelvis","right_knee"],
+  ["left_knee","left_ankle"],["right_knee","right_ankle"]
+];
+const COLORS = ["#ff5c5c","#58a6ff","#55d98b","#d58bff","#ffb84d","#4dd8e8","#ff77c8","#b5e36c"];
+
+const state = {
+  catalog: [], selected: [], frame: 0, showHurt: true, showSkeleton: true, showRotation: true,
+  scene: null, camera: null, renderer: null, controls: null, root: null, gridRoot: null,
+  suggestionIndex: -1
+};
+
+const $ = id => document.getElementById(id);
+const search = $("search"), suggestions = $("suggestions"), movesEl = $("moves");
+const frameSlider = $("frame"), frameNum = $("frameNum"), legend = $("legend"), status = $("status"), errorEl = $("error");
+
+function esc(s){return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));}
+function setError(msg){ errorEl.style.display="block"; errorEl.textContent=msg; }
+function clearError(){ errorEl.style.display="none"; }
+
+function ueToThree(p){
+  // Unreal Engine: X forward, Y right, Z up.
+  // Three.js: X right, Y up, Z toward viewer. This mapping preserves orientation:
+  // UE (X,Y,Z) -> Three (X,Z,-Y).
+  return new THREE.Vector3(Number(p[0])||0, Number(p[2])||0, -(Number(p[1])||0));
+}
+function transformPoint(p, mirror){
+  const v=ueToThree(p);
+  if(!mirror) v.z=-v.z; // mirror UE Y, represented by Three -Z.
+  return v;
+}
+function mirrorRotation(rad, mirror){ return mirror ? rad : -rad; }
+
+function vecFromPart(frame, name, mirror){
+  if(frame.hurt_cylinders && frame.hurt_cylinders[name]) return transformPoint(frame.hurt_cylinders[name].center, mirror);
+  if(frame.collision_spheres && frame.collision_spheres[name]) return transformPoint(frame.collision_spheres[name].center, mirror);
+  return null;
+}
+function rawPart(frame, name){
+  if(frame.hurt_cylinders && frame.hurt_cylinders[name]) return frame.hurt_cylinders[name];
+  if(frame.collision_spheres && frame.collision_spheres[name]) return frame.collision_spheres[name];
+  return null;
+}
+function mean(arr){
+  if(!arr.length) return 0;
+  return arr.reduce((a,b)=>a+b,0)/arr.length;
+}
+function std(arr){
+  if(arr.length<2) return 0;
+  const m=mean(arr); return Math.sqrt(mean(arr.map(x=>(x-m)*(x-m))));
+}
+function circularMean(angles){
+  if(!angles.length) return 0;
+  let sx=0,sy=0; for(const a of angles){sx+=Math.cos(a);sy+=Math.sin(a);}
+  return Math.atan2(sy,sx);
+}
+function consensus(values){
+  if(!values.length) return "?";
+  return values.every(v=>v===values[0]) ? String(values[0]) : "?";
+}
+function sampleCount(move){return move.data.frames.length;}
+function frameAt(move, i){
+  const n=sampleCount(move);
+  if(!n) return null;
+  const idx=Math.min(i, move.data.frames[0].length-1);
+  return move.data.frames.map(s=>s[idx]).filter(Boolean);
+}
+function loadCatalog(){
+  return fetch("./catalog.json",{cache:"no-store"}).then(r=>{if(!r.ok)throw Error("Could not load catalog.json");return r.json()});
+}
+async function loadMove(item){
+  const existing=state.selected.find(x=>x.catalog===item);
+  if(existing) return;
+  const r=await fetch("./data/"+encodeURIComponent(item.file_name),{cache:"no-store"});
+  if(!r.ok) throw Error("Could not load data/"+item.file_name);
+  const data=await r.json();
+  state.selected.push({catalog:item,data,color:COLORS[state.selected.length%COLORS.length],mirror:false});
+  renderMoveList(); updateFrameRange(); updateScene(); updateLegend();
+}
+function removeMove(index){state.selected.splice(index,1);renderMoveList();updateFrameRange();updateScene();updateLegend();}
+function renderMoveList(){
+  if(!state.selected.length){movesEl.innerHTML='<div class="empty">Search and select moves to compare.</div>';return;}
+  movesEl.innerHTML=state.selected.map((m,i)=>`
+    <div class="move">
+      <div class="moveTop">
+        <input class="swatch" type="color" value="${m.color}" data-color="${i}" title="Move color">
+        <div class="moveTitle"><strong>${esc(m.data.game.toUpperCase())} — ${esc(m.data.character_name)} — ${esc(m.data.move)}</strong><span>${esc(m.data.game)} ${esc(m.data.game_version)}</span></div>
+        <button class="remove" data-remove="${i}" title="Remove">×</button>
+      </div>
+      <div class="moveControls">
+        <label><input type="checkbox" data-mirror="${i}" ${m.mirror?"checked":""}> Mirror</label>
+        <span>${m.data.frames[0]?.length||0} frames · ${m.data.frames.length} samples</span>
+      </div>
+    </div>`).join("");
+  movesEl.querySelectorAll("[data-color]").forEach(el=>el.oninput=e=>{state.selected[+e.target.dataset.color].color=e.target.value;updateScene();updateLegend();});
+  movesEl.querySelectorAll("[data-mirror]").forEach(el=>el.onchange=e=>{state.selected[+e.target.dataset.mirror].mirror=e.target.checked;updateScene();updateLegend();});
+  movesEl.querySelectorAll("[data-remove]").forEach(el=>el.onclick=()=>removeMove(+el.dataset.remove));
+}
+function updateFrameRange(){
+  const max=Math.max(0,...state.selected.map(m=>Math.max(0,(m.data.frames[0]?.length||1)-1)));
+  frameSlider.max=max; state.frame=Math.min(state.frame,max); frameSlider.value=state.frame; frameNum.textContent=state.frame;
+  status.textContent=state.selected.length ? `${state.selected.length} move${state.selected.length===1?"":"s"} · frame ${state.frame}` : "No moves selected";
+}
+function sameFrameValues(frames,key){
+  const vals=frames.map(f=>f?.[key]);
+  return consensus(vals);
+}
+
+function createScene(){
+  state.scene=new THREE.Scene();
+  state.scene.background=new THREE.Color(0x0b0e12);
+  state.camera=new THREE.PerspectiveCamera(50,1,0.1,100000);
+  state.camera.position.set(500,400,700);
+  state.renderer=new THREE.WebGLRenderer({antialias:true});
+  state.renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+  state.renderer.setSize($("viewport").clientWidth,$("viewport").clientHeight);
+  $("viewport").appendChild(state.renderer.domElement);
+  state.controls=new OrbitControls(state.camera,state.renderer.domElement);
+  state.controls.enableDamping=true;
+  state.controls.target.set(0,80,0);
+  state.controls.update();
+
+  const hemi=new THREE.HemisphereLight(0xffffff,0x405060,1.6); state.scene.add(hemi);
+  const dir=new THREE.DirectionalLight(0xffffff,1.8); dir.position.set(300,500,300); state.scene.add(dir);
+
+  state.gridRoot=new THREE.Group();
+  // Z=0 in UE => Y=0 in Three: ground grid.
+  const ground=new THREE.GridHelper(2000,40,0x45515f,0x252d38);
+  state.gridRoot.add(ground);
+  // Y=0 in UE => Three Z=0: vertical X/Y grid.
+  const wall=new THREE.GridHelper(2000,40,0x45515f,0x252d38);
+  wall.rotation.x=Math.PI/2;
+  state.gridRoot.add(wall);
+  state.scene.add(state.gridRoot);
+
+  state.root=new THREE.Group(); state.scene.add(state.root);
   resize();
-  loadCatalog();
   animate();
+}
+function clearRoot(){while(state.root.children.length)state.root.remove(state.root.children[0]);}
 
+function material(color,opacity=1){return new THREE.MeshBasicMaterial({color,transparent:opacity<1,opacity,depthWrite:opacity>=1});}
+function cylinderBetween(a,b,r,mat){
+  const d=new THREE.Vector3().subVectors(b,a), len=d.length();
+  if(len<1e-6)return null;
+  const mid=new THREE.Vector3().addVectors(a,b).multiplyScalar(.5);
+  const mesh=new THREE.Mesh(new THREE.CylinderGeometry(r,r,len,10,1),mat);
+  mesh.position.copy(mid);
+  mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),d.normalize());
+  return mesh;
+}
+function lineBetween(a,b,color,opacity=1){
+  const geo=new THREE.BufferGeometry().setFromPoints([a,b]);
+  return new THREE.Line(geo,new THREE.LineBasicMaterial({color,transparent:opacity<1,opacity}));
+}
+function averageVector(vs){return vs.length?vs.reduce((a,v)=>a.add(v.clone()),new THREE.Vector3()).multiplyScalar(1/vs.length):null;}
+
+function buildMoveVisual(move){
+  const group=new THREE.Group(), color=new THREE.Color(move.color);
+  const frames=frameAt(move,state.frame);
+  if(!frames.length)return group;
+  const parts={};
+  for(const name of [...HURT_KEYS,...COLLISION_KEYS]){
+    const vals=frames.map(f=>vecFromPart(f,name,move.mirror)).filter(Boolean);
+    if(vals.length) parts[name]={avg:averageVector(vals),sd:new THREE.Vector3(std(vals.map(v=>v.x)),std(vals.map(v=>v.y)),std(vals.map(v=>v.z)))};
+  }
+  const lower=parts.lower_torso?.avg;
+  const centroid=lower?new THREE.Vector3(lower.x,0,lower.z):new THREE.Vector3();
+
+  if(state.showHurt){
+    for(const name of HURT_KEYS){
+      const vals=frames.map(f=>rawPart(f,name)).filter(Boolean);
+      if(!vals.length)continue;
+      const centers=vals.map(v=>transformPoint(v.center,move.mirror));
+      const c=averageVector(centers);
+      const radius=mean(vals.map(v=>Number(v.radius)||0));
+      const hh=mean(vals.map(v=>Number(v.half_height)||0));
+      const geo=new THREE.CylinderGeometry(radius,radius,hh*2,18,1);
+      const mesh=new THREE.Mesh(geo,material(color,.28));
+      mesh.position.copy(c);
+      group.add(mesh);
+    }
+  }
+
+  if(state.showSkeleton){
+    for(const [a,b] of BONES){
+      const pa=parts[a]?.avg,pb=parts[b]?.avg;
+      if(!pa||!pb)continue;
+      group.add(lineBetween(pa,pb,color,.95));
+      // Error thickness = 3 standard deviations. Use endpoint positional uncertainty.
+      const sa=parts[a]?.sd,sb=parts[b]?.sd;
+      const ea=sa?Math.max(sa.x,sa.y,sa.z):0, eb=sb?Math.max(sb.x,sb.y,sb.z):0;
+      const err=Math.max(0,3*Math.max(ea,eb));
+      if(err>0.01){
+        const emat=material(color,.20);
+        const tube=cylinderBetween(pa,pb,err,emat);
+        if(tube)group.add(tube);
+      }
+    }
+  }
+
+  if(state.showRotation){
+    const rotations=frames.map(f=>typeof f.rotation==="number"?mirrorRotation(f.rotation,move.mirror):null).filter(v=>v!==null);
+    const rot=circularMean(rotations);
+    const end=centroid.clone().add(new THREE.Vector3(Math.cos(rot)*100,0,-Math.sin(rot)*100));
+    group.add(lineBetween(centroid,end,color,.95));
+    const tip=new THREE.Mesh(new THREE.ConeGeometry(7,18,10),material(color,.95));
+    tip.position.copy(end);
+    tip.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),end.clone().sub(centroid).normalize());
+    group.add(tip);
+  }
+  return group;
+}
+function updateScene(){
+  if(!state.root)return;
+  clearRoot();
+  state.selected.forEach(m=>state.root.add(buildMoveVisual(m)));
+}
+function angleForMove(move){
+  const frames=frameAt(move,state.frame);
+  const points=frames.map(f=>vecFromPart(f,"lower_torso",move.mirror)).filter(Boolean).map(v=>new THREE.Vector3(v.x,0,v.z));
+  if(!points.length)return "?";
+  const c=averageVector(points);
+  if(c.length()<1e-9)return "0.0°";
+  const base=new THREE.Vector3(-1,0,0), v=c.normalize();
+  return THREE.MathUtils.radToDeg(Math.acos(THREE.MathUtils.clamp(base.dot(v),-1,1))).toFixed(1)+"°";
+}
+function updateLegend(){
+  legend.innerHTML=state.selected.map((m,i)=>{
+    const fs=frameAt(m,state.frame);
+    const f=fs[0]||{};
+    const aid=consensus(fs.map(x=>x?.animation_id));
+    const af=consensus(fs.map(x=>x?.animation_frame));
+    const inp=consensus(fs.map(x=>x?.input));
+    return `<div class="legendItem">
+      <div class="legendHead"><span class="legendDot" style="background:${m.color}"></span><span class="legendName">${esc(m.data.game.toUpperCase())} — ${esc(m.data.character_name)} — ${esc(m.data.move)}</span></div>
+      <div class="legendVals">
+        <div class="legendVal"><b>Animation ID</b><span>${esc(aid)}</span></div>
+        <div class="legendVal"><b>Animation Frame</b><span>${esc(af)}</span></div>
+        <div class="legendVal"><b>Input</b><span>${esc(inp)}</span></div>
+        <div class="legendVal"><b>Angle</b><span>${esc(angleForMove(m))}</span></div>
+      </div>
+    </div>`;
+  }).join("");
+}
+
+function getSearchResults(){
+  const q=search.value.trim().toLowerCase();
+  if(!q)return [];
+
+  const words=q.split(/\s+/).filter(Boolean);
+
+  return state.catalog.map(item=>{
+    const text=[
+      item.game,
+      item.game_version,
+      item.character_name,
+      item.move,
+      String(item.character_id)
+    ].join(" ").toLowerCase();
+
+    let score=0;
+
+    for(const w of words){
+      if(text.includes(w)){
+        score+=10;
+      }else{
+        let j=0;
+        for(const ch of text){
+          if(ch===w[j])j++;
+        }
+        if(j===w.length){
+          score+=Math.max(1,5-w.length*.1);
+        }
+      }
+    }
+
+    return {item,score};
+  })
+  .filter(x=>x.score>0)
+  .sort((a,b)=>b.score-a.score)
+  .slice(0,30);
+}
+
+function renderSuggestions(results){
+  // Always explicitly control the hidden state.
+  if(!results.length){
+    suggestions.innerHTML='<div class="suggestion">No matches</div>';
+    suggestions.hidden=false;
+    return;
+  }
+
+  // Keep the selected index valid.
+  if(state.suggestionIndex >= results.length){
+    state.suggestionIndex=results.length-1;
+  }
+
+  suggestions.innerHTML=results.map(({item},i)=>`
+    <div class="suggestion ${i===state.suggestionIndex ? "active" : ""}"
+         data-index="${i}"
+         data-file="${esc(item.file_name)}">
+      <strong>${esc(item.game.toUpperCase())} — ${esc(item.character_name)} — ${esc(item.move)}</strong>
+      <small>${esc(item.game)} ${esc(item.game_version)}</small>
+    </div>
+  `).join("");
+
+  // IMPORTANT: unhide after replacing the contents.
+  suggestions.hidden=false;
+
+  suggestions.querySelectorAll("[data-file]").forEach(el=>{
+    el.onclick=async()=>{
+      const item=state.catalog.find(
+        x=>x.file_name===el.dataset.file
+      );
+
+      await selectSuggestion(item);
+    };
+  });
+
+  scrollActiveSuggestionIntoView();
+}
+
+function scrollActiveSuggestionIntoView(){
+  const active=suggestions.querySelector(".suggestion.active");
+
+  if(active){
+    active.scrollIntoView({
+      block:"nearest"
+    });
+  }
+}
+
+async function selectSuggestion(item){
+  if(!item)return;
+
+  try{
+    clearError();
+    await loadMove(item);
+
+    search.value="";
+    suggestions.hidden=true;
+    suggestions.innerHTML="";
+    state.suggestionIndex=-1;
+  }catch(e){
+    setError(e.message);
+  }
+}
+
+function doSearch(){
+  const q=search.value.trim();
+
+  if(!q){
+    suggestions.hidden=true;
+    suggestions.innerHTML="";
+    state.suggestionIndex=-1;
+    return;
+  }
+
+  const results=getSearchResults();
+
+  // Start at the first result when a new search is typed.
+  state.suggestionIndex=-1;
+
+  renderSuggestions(results);
+}
+
+function resize(){
+  if(!state.renderer)return;
+  const w=$("viewport").clientWidth,h=$("viewport").clientHeight;
+  state.camera.aspect=w/h;state.camera.updateProjectionMatrix();state.renderer.setSize(w,h);
+}
+function resetCamera(){
+  state.camera.position.set(500,400,700);state.controls.target.set(0,80,0);state.controls.update();
+}
+function animate(){
+  requestAnimationFrame(animate);state.controls?.update();state.renderer?.render(state.scene,state.camera);
+}
+
+search.addEventListener("input",doSearch);
+search.addEventListener("keydown",async e=>{
+  if(suggestions.hidden)return;
+
+  const results=getSearchResults();
+  if(!results.length)return;
+
+  if(e.key==="ArrowDown"){
+    e.preventDefault();
+
+    state.suggestionIndex=
+      (state.suggestionIndex+1)%results.length;
+
+    renderSuggestions(results);
+  }
+
+  else if(e.key==="ArrowUp"){
+    e.preventDefault();
+
+    state.suggestionIndex=
+      state.suggestionIndex<=0
+        ? results.length-1
+        : state.suggestionIndex-1;
+
+    renderSuggestions(results);
+  }
+
+  else if(e.key==="Enter"){
+    e.preventDefault();
+
+    // If nothing is highlighted, select the first result.
+    const index=
+      state.suggestionIndex>=0
+        ? state.suggestionIndex
+        : 0;
+
+    await selectSuggestion(results[index].item);
+  }
+
+  else if(e.key==="Escape"){
+    e.preventDefault();
+
+    suggestions.hidden=true;
+    state.suggestionIndex=-1;
+  }
+});
+document.addEventListener("click",e=>{if(!e.target.closest("#searchWrap"))suggestions.hidden=true});
+frameSlider.addEventListener("input",()=>{state.frame=+frameSlider.value;frameNum.textContent=state.frame;status.textContent=`${state.selected.length} move${state.selected.length===1?"":"s"} · frame ${state.frame}`;updateScene();updateLegend();});
+$("showHurt").onchange=e=>{state.showHurt=e.target.checked;updateScene()};
+$("showSkeleton").onchange=e=>{state.showSkeleton=e.target.checked;updateScene()};
+$("showRotation").onchange=e=>{state.showRotation=e.target.checked;updateScene()};
+window.addEventListener("resize",resize);
+window.addEventListener("keydown",e=>{if(e.key.toLowerCase()==="r")resetCamera()});
+
+(async function init(){
+  try{
+    state.catalog=await loadCatalog();
+    createScene();
+    status.textContent=`Catalog loaded · ${state.catalog.length} comparisons`;
+  }catch(e){setError(e.message+"\\nMake sure index.html is served from a web server so catalog.json and data/*.json can be fetched.");}
+})();
 </script>
-
 </body>
 </html>
